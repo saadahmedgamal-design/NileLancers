@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Successful - NileLancers</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+    .success-card { background: var(--card-bg); padding: 40px; border-radius: var(--radius-lg); border: 1px solid var(--border); max-width: 500px; }
+    .success-icon { font-size: 64px; color: #10b981; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="success-card">
+    <i class="fas fa-check-circle success-icon"></i>
+    <h2>Payment Successful!</h2>
+    <p>The application has been accepted and funded securely.</p>
+    <br/>
+    <a href="index.html" class="btn-primary" style="text-decoration:none;">Return to Dashboard</a>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="db.js"></script>
+  <script>
+    // Fallback if webhook isn't setup: Update status directly from client
+    const params = new URLSearchParams(window.location.search);
+    const appId = params.get('app_id');
+    if (appId && window.UserDB) {
+      window.UserDB.updateApplicationStatus(appId, 'accepted', 'Project Funded via Stripe').then(() => {
+        console.log('Application status updated to accepted.');
+      });
+    }
+  </script>
+</body>
+</html>
