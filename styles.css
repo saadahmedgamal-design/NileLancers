@@ -128,11 +128,36 @@ img { max-width: 100%; display: block; }
 [data-theme="light"] .header { background: rgba(248,247,242,0.9); }
 .header.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,0.5); }
 .nav { display: flex; align-items: center; justify-content: space-between; height: 100%; padding: 0 32px; }
-.nav-logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.nav-logo-img { font-size: 28px; color: var(--gold); display: flex; align-items: center; justify-content: center; animation: float 3s ease-in-out infinite; }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-.nav-logo:hover .nav-logo-img { animation-play-state: paused; }
-.nav-logo-text { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #7FDBFF 0%, #48c8f0 30%, #FFD700 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
+.nav-logo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.nav-logo-img {
+  font-size: 32px;
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 16px rgba(255, 215, 0, 0.5));
+  animation: logoFloat 3s ease-in-out infinite;
+  transition: filter 0.3s;
+}
+.nav-logo:hover .nav-logo-img {
+  animation-play-state: paused;
+  filter: drop-shadow(0 0 14px rgba(255, 215, 0, 1)) drop-shadow(0 0 28px rgba(255, 200, 0, 0.7));
+}
+@keyframes logoFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.nav-logo-text {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.nav-logo-text .logo-nile {
+  color: #7FDBFF;
+  -webkit-text-fill-color: #7FDBFF;
+  text-shadow: 0 0 12px rgba(127, 219, 255, 0.4);
+}
+.nav-logo-text .logo-lancers {
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
 .nav-links { display: flex; align-items: center; gap: 8px; }
 .nav-link {
   position: relative;
