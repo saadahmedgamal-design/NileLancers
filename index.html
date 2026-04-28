@@ -119,6 +119,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="db.js"></script>
 
   <script type="text/babel">
@@ -127,7 +128,7 @@
     /* ============================================================
        HEADER
        ============================================================ */
-    function Header({ page, setPage, lang, setLang, theme, setTheme, user, setUser, unreadMessages = 0, unreadNotifications = 0 }) {
+    function Header({ page, setPage, lang, setLang, theme, setTheme, user, setUser, currency, setCurrency, unreadMessages = 0, unreadNotifications = 0 }) {
       const [scrolled, setScrolled] = useState(false);
       const [menuOpen, setMenuOpen] = useState(false);
       const [dropOpen, setDropOpen] = useState(false);
@@ -160,12 +161,29 @@
           <nav className="nav" dir={dir}>
             <div className="nav-logo" onClick={() => nav('home')}>
               <i className="fas fa-water nav-logo-img"></i>
-              <span className="nav-logo-text">NileLancers</span>
+              <span className="nav-logo-text"><span className="logo-nile">Nile</span><span className="logo-lancers">Lancers</span></span>
+            </div>
+            <div className="nav-search-wrap" style={{ flex: 1, maxWidth: '400px', margin: '0 20px', position: 'relative' }}>
+               <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '14px' }}></i>
+               <input 
+                 className="nav-search-input" 
+                 placeholder={lang === 'en' ? 'Search jobs...' : 'ابحث عن وظائف...'} 
+                 style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '30px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '14px' }}
+                 onKeyDown={e => {
+                   if (e.key === 'Enter' && e.target.value) {
+                     setPage('jobs', { query: e.target.value });
+                     e.target.value = '';
+                   }
+                 }}
+               />
             </div>
             <div className="nav-links">
               {navLinks.map((l, i) => (
                 <span key={i} className={`nav-link${page === l.page ? ' active' : ''}`} onClick={() => nav(l.page)}>{l.label}</span>
               ))}
+              {user && (
+                <span className={`nav-link${page === 'dashboard' ? ' active' : ''}`} onClick={() => nav('dashboard')}>{lang === 'en' ? 'Dashboard' : 'لوحة التحكم'}</span>
+              )}
               {user?.role === 'freelancer' ? (
                 <span className={`nav-link${page === 'applications' ? ' active' : ''}`} onClick={() => nav('applications')}>{t.applications}</span>
               ) : (
@@ -175,6 +193,9 @@
             <div className="nav-actions">
               <button className="nav-icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
                 <i className={`fas fa-${theme === 'dark' ? 'sun' : 'moon'}`}></i>
+              </button>
+              <button className="lang-btn" onClick={() => setCurrency(currency === 'EGP' ? 'USD' : 'EGP')} title="Toggle currency">
+                {currency === 'EGP' ? 'EGP' : '$ USD'}
               </button>
               <button className="lang-btn" onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>
                 {lang === 'en' ? 'ع' : 'EN'}
@@ -199,10 +220,14 @@
                   {dropOpen && (
                     <div className="dropdown" dir={dir}>
                       <div className="dropdown-header">
-                        <div style={{ fontWeight: 800, fontSize: '14px' }}>{user.name}</div>
+                        <div style={{ fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                          {user.name}
+                          {user.isVerified && <i className="fas fa-check-circle" style={{ color: '#3897f0', marginLeft: '6px', fontSize: '12px' }} title="Verified"></i>}
+                        </div>
                         <small>{user.email}</small>
                       </div>
                       {[
+                        { icon: 'tachometer-alt', label: lang === 'en' ? 'Dashboard' : 'لوحة التحكم', page: 'dashboard' },
                         { icon: 'user', label: t.my_profile, page: 'profile' },
                         { icon: 'envelope', label: t.messages, page: 'messages', count: unreadMessages },
                         { icon: 'bell', label: t.notifications, page: 'notifications', count: unreadNotifications },
@@ -285,7 +310,7 @@
               <div className="footer-brand">
                 <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => setPage('home')}>
                   <i className="fas fa-water nav-logo-img"></i>
-                  <span className="nav-logo-text">NileLancers</span>
+                  <span className="nav-logo-text"><span className="logo-nile">Nile</span><span className="logo-lancers">Lancers</span></span>
                 </div>
                 <p>{t.desc}</p>
                 <div className="footer-socials">
@@ -300,13 +325,14 @@
                 <span className="footer-link" onClick={() => setPage('about')}>{t.about}</span>
                 <span className="footer-link" onClick={() => setPage('jobs')}>{lang === 'en' ? 'Browse Jobs' : 'تصفح الوظائف'}</span>
                 <span className="footer-link" onClick={() => setPage('contact')}>{t.contact}</span>
+                <span className="footer-link" onClick={() => setPage('blog')}>{lang === 'en' ? 'Blog' : 'المدونة'}</span>
                 <span className="footer-link" onClick={() => setPage('post-job')}>{lang === 'en' ? 'Post a Service' : 'نشر خدمة'}</span>
               </div>
               <div className="footer-col">
                 <h4>{t.company}</h4>
                 <span className="footer-link" onClick={() => setPage('about')}>{t.about}</span>
-                <span className="footer-link">{t.terms}</span>
-                <span className="footer-link">{t.privacy}</span>
+                <span className="footer-link" onClick={() => setPage('legal', { type: 'terms' })}>{t.terms}</span>
+                <span className="footer-link" onClick={() => setPage('legal', { type: 'privacy' })}>{t.privacy}</span>
               </div>
               <div className="footer-col">
                 <h4>{t.contact}</h4>
@@ -318,8 +344,8 @@
             <div className="footer-bottom">
               <p>{t.rights}</p>
               <div style={{ display: 'flex', gap: '16px' }}>
-                <span className="footer-link">{t.terms}</span>
-                <span className="footer-link">{t.privacy}</span>
+                <span className="footer-link" onClick={() => setPage('legal', { type: 'terms' })}>{t.terms}</span>
+                <span className="footer-link" onClick={() => setPage('legal', { type: 'privacy' })}>{t.privacy}</span>
               </div>
             </div>
           </div>
@@ -497,7 +523,7 @@
     /* ============================================================
        FEATURED JOBS
        ============================================================ */
-    function FeaturedJobs({ lang, setPage }) {
+    function FeaturedJobs({ lang, setPage, formatPrice }) {
       const t = window.TRANSLATIONS[lang].featured_jobs;
       const dir = lang === 'ar' ? 'rtl' : 'ltr';
       const [jobs, setJobs] = useState([]);
@@ -533,7 +559,7 @@
                     {job.skills.map(skill => <span key={skill} className="job-skill">{skill}</span>)}
                   </div>
                   <div className="job-card-footer">
-                    <span className="job-budget">{job.budget.toLocaleString()} {lang === 'en' ? 'EGP' : 'جنيه'}</span>
+                    <span className="job-budget">{formatPrice(job.budget)}</span>
                     <span className={`job-type-badge job-type-${job.type}`}>
                       {job.type === 'local'
                         ? (lang === 'en' ? 'LOCAL' : 'محلي')
@@ -768,7 +794,10 @@
       return (
         <div className="auth-page" dir={dir}>
           <div className="auth-card">
-            <div className="auth-logo"><h1>NileLancers</h1></div>
+            <div className="auth-logo">
+              <i className="fas fa-water" style={{ fontSize: '28px', color: 'var(--gold)', filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.8))', marginRight: '10px' }}></i>
+              <h1><span style={{ color: '#7FDBFF', WebkitTextFillColor: '#7FDBFF' }}>Nile</span><span style={{ color: 'var(--gold)', WebkitTextFillColor: 'var(--gold)' }}>Lancers</span></h1>
+            </div>
             <div className="auth-header">
               <h2>{t.login_title}</h2>
               <p>{t.login_sub}</p>
@@ -1035,7 +1064,7 @@
     /* ============================================================
        JOBS PAGE
        ============================================================ */
-    function JobsPage({ lang, user, setPage }) {
+    function JobsPage({ lang, user, setPage, params, formatPrice }) {
       const t = window.TRANSLATIONS[lang].services_page;
       const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
@@ -1093,15 +1122,26 @@
       const catMap = { 'الكل': 'All', 'تطوير المواقع': 'Web Development', 'التصميم': 'Design', 'التسويق': 'Marketing', 'تطوير التطبيقات': 'Mobile Development', 'الكتابة': 'Writing', 'أخرى': 'Other' };
       const cats = lang === 'en' ? enCats : arCats;
 
-      const [query, setQuery]         = useState('');
+      const [query, setQuery]         = useState(params?.query || '');
+      useEffect(() => { if (params?.query) setQuery(params.query); }, [params]);
       const [activeCat, setActiveCat] = useState(cats[0]);
+      const [minBudget, setMinBudget] = useState('');
+      const [maxBudget, setMaxBudget] = useState('');
+      const [jobType, setJobType]     = useState('All'); /* All, Local, Intl */
 
       const filtered = allJobs.filter(job => {
         const catKey = lang === 'ar' ? (catMap[activeCat] || activeCat) : activeCat;
         const catMatch = catKey === 'All' || activeCat === cats[0] || job.category === catKey;
         const q = query.toLowerCase();
         const qMatch = !q || job.title.toLowerCase().includes(q) || job.skills.some(s => s.toLowerCase().includes(q)) || job.category.toLowerCase().includes(q);
-        return catMatch && qMatch;
+        
+        const matchesMin = minBudget === '' || job.budget >= Number(minBudget);
+        const matchesMax = maxBudget === '' || job.budget <= Number(maxBudget);
+        const matchesType = jobType === 'All' || 
+                           (jobType === 'Local' && job.type === 'local') || 
+                           (jobType === 'Intl' && job.type === 'intl');
+                           
+        return catMatch && qMatch && matchesMin && matchesMax && matchesType;
       });
 
       const toggleApply = (jobId) => {
@@ -1138,11 +1178,35 @@
               </div>
             </div>
 
-            <div className="jobs-filters" style={{ justifyContent: 'center', marginBottom: '32px' }}>
+            <div className="jobs-filters" style={{ justifyContent: 'center', marginBottom: '16px' }}>
               {cats.map(cat => (
                 <button key={cat} className={`filter-chip${activeCat === cat ? ' active' : ''}`}
                   onClick={() => setActiveCat(cat)}>{cat}</button>
               ))}
+            </div>
+
+            {/* Advanced Filters */}
+            <div className="jobs-filters" style={{ justifyContent: 'center', gap: '15px', marginBottom: '40px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>{lang === 'en' ? 'Budget:' : 'الميزانية:'}</span>
+                <input className="form-input" style={{ width: '100px', height: '36px', fontSize: '13px' }} 
+                       type="number" placeholder={lang === 'en' ? 'Min' : 'الأقل'} value={minBudget} onChange={e => setMinBudget(e.target.value)} />
+                <input className="form-input" style={{ width: '100px', height: '36px', fontSize: '13px' }} 
+                       type="number" placeholder={lang === 'en' ? 'Max' : 'الأكثر'} value={maxBudget} onChange={e => setMaxBudget(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>{lang === 'en' ? 'Type:' : 'النوع:'}</span>
+                <select className="form-input" style={{ width: '130px', height: '36px', fontSize: '13px', appearance: 'none' }} 
+                        value={jobType} onChange={e => setJobType(e.target.value)}>
+                  <option value="All">{lang === 'en' ? 'All Types' : 'الكل'}</option>
+                  <option value="Local">{lang === 'en' ? 'Local (Egypt)' : 'محلي (مصر)'}</option>
+                  <option value="Intl">{lang === 'en' ? 'International' : 'دولي'}</option>
+                </select>
+              </div>
+              <button className="btn-secondary" style={{ height: '36px', fontSize: '12px' }} 
+                      onClick={() => { setMinBudget(''); setMaxBudget(''); setJobType('All'); }}>
+                {lang === 'en' ? 'Clear' : 'مسح'}
+              </button>
             </div>
 
             {loadingJobs ? (
@@ -1195,7 +1259,7 @@
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             {lang === 'en' ? 'Budget' : 'الميزانية'}
                           </div>
-                          <span className="job-budget">{job.budget.toLocaleString()} {lang === 'en' ? 'EGP' : 'جنيه'}</span>
+                          <span className="job-budget">{formatPrice(job.budget)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button
@@ -1247,6 +1311,9 @@
       const [saveMsg, setSaveMsg] = useState('');
       const setF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
 
+      const [reviews, setReviews] = useState([]);
+      const [avgRating, setAvgRating] = useState(0);
+
       useEffect(() => {
         if (!user && !viewUserId) return;
         if (isMe) {
@@ -1267,6 +1334,20 @@
             if (res.ok) setViewUser(res.user);
           });
         }
+      }, [user, viewUserId]);
+
+      useEffect(() => {
+        const id = viewUserId || user?.id;
+        if (!id) return;
+        return window.UserDB.subscribeToReviews(id, (list) => {
+          setReviews(list);
+          if (list.length > 0) {
+            const sum = list.reduce((a, b) => a + b.rating, 0);
+            setAvgRating((sum / list.length).toFixed(1));
+          } else {
+            setAvgRating(0);
+          }
+        });
       }, [user, viewUserId]);
 
       if (!user && !viewUserId) {
@@ -1319,10 +1400,10 @@
       };
 
       const stats = [
-        { label: lang === 'en' ? 'PROJECTS' : 'المشاريع', value: '24' },
-        { label: lang === 'en' ? 'SUCCESS RATE' : 'معدل النجاح', value: '98%' },
+        { label: lang === 'en' ? 'PROJECTS' : 'المشاريع', value: reviews.length > 0 ? reviews.length + 5 : '24' }, // Mocking base projects + real reviews
+        { label: lang === 'en' ? 'SUCCESS RATE' : 'معدل النجاح', value: '100%' },
         { label: lang === 'en' ? 'EARNINGS' : 'الأرباح', value: '$12,400' },
-        { label: lang === 'en' ? 'REVIEWS' : 'التقييمات', value: '4.9 ★' },
+        { label: lang === 'en' ? 'REVIEWS' : 'التقييمات', value: `${avgRating} ★ (${reviews.length})` },
       ];
 
       const quickLinks = [
@@ -1332,22 +1413,78 @@
         { icon: 'fa-cog', color: '#9b59b6', label: lang === 'en' ? 'Settings' : 'الإعدادات', sub: lang === 'en' ? 'Manage account' : 'إدارة حسابك', page: 'settings' },
       ];
 
+      const [showInviteModal, setShowInviteModal] = useState(false);
+      const [myJobs, setMyJobs] = useState([]);
+
+      const handleInvite = (jobId) => {
+        const job = myJobs.find(j => j.id === jobId);
+        window.UserDB.addNotification(viewUser.id, 'info', `${user.name} invited you to apply for: ${job.title}`, 'jobs', jobId);
+        setShowInviteModal(false);
+        alert(lang === 'en' ? 'Invitation sent!' : 'تم إرسال الدعوة!');
+      };
+
+      useEffect(() => {
+        if (user?.role === 'client' && !isMe) {
+          window.UserDB.listMyPostedJobs(user.id).then(setMyJobs);
+        }
+      }, [user, isMe]);
+
       return (
         <div className="profile-page" dir={dir}>
+          {showInviteModal && (
+            <div className="modal-overlay" onClick={() => setShowInviteModal(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <h3>{lang === 'en' ? 'Invite to Job' : 'دعوة لمشروع'}</h3>
+                <div style={{ display: 'grid', gap: '10px', marginTop: '20px' }}>
+                  {myJobs.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)' }}>{lang === 'en' ? 'No active jobs to invite to.' : 'لا توجد وظائف نشطة حالياً.'}</p>
+                  ) : (
+                    myJobs.map(j => (
+                      <button key={j.id} className="btn-secondary" style={{ textAlign: 'left', padding: '12px' }} onClick={() => handleInvite(j.id)}>
+                        <div style={{ fontWeight: 800 }}>{j.title}</div>
+                        <div style={{ fontSize: '11px', opacity: 0.7 }}>{j.budget} EGP</div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <button className="btn-primary" style={{ width: '100%', marginTop: '20px' }} onClick={() => setShowInviteModal(false)}>
+                  {lang === 'en' ? 'Close' : 'إغلاق'}
+                </button>
+              </div>
+            </div>
+          )}
           <div className="container">
             <div className="profile-card">
               <div className="profile-avatar">{(viewUser.name?.[0] || 'U').toUpperCase()}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
                    <div>
-                      <h2 className="profile-name">{viewUser.name}</h2>
+                      <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {viewUser.name}
+                        {viewUser.isVerified && <i className="fas fa-check-circle" style={{ color: '#3897f0', fontSize: '18px' }} title="Verified Account"></i>}
+                        {viewUser.isFeatured && <i className="fas fa-star" style={{ color: 'var(--gold)', fontSize: '18px' }} title="Featured Freelancer"></i>}
+                      </h2>
                       <p className="profile-role">@{viewUser.username || viewUser.email?.split('@')[0]}</p>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                        {(viewUser.badges || []).map((b, i) => (
+                          <span key={i} style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(255,255,255,0.05)', color: 'var(--gold)', padding: '4px 12px', borderRadius: '20px', border: '1px solid var(--gold)' }}>
+                            <i className="fas fa-award" style={{ marginRight: '5px' }}></i>{b}
+                          </span>
+                        ))}
+                      </div>
                    </div>
-                   <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                       {!isMe && user && (
-                         <button className="btn-primary" onClick={() => setPage('messages', { targetId: viewUser.id })}>
-                            <i className="fas fa-envelope"></i> {lang === 'en' ? 'Message' : 'مراسلة'}
-                         </button>
+                         <>
+                           {user.role === 'client' && (
+                             <button className="btn-secondary" onClick={() => setShowInviteModal(true)}>
+                               <i className="fas fa-paper-plane"></i> {lang === 'en' ? 'Invite' : 'دعوة'}
+                             </button>
+                           )}
+                           <button className="btn-primary" onClick={() => setPage('messages', { targetId: viewUser.id })}>
+                              <i className="fas fa-envelope"></i> {lang === 'en' ? 'Message' : 'مراسلة'}
+                           </button>
+                         </>
                       )}
                       {isMe && !editing && (
                          <button className="btn-secondary" onClick={() => setEditing(true)}>
@@ -1461,6 +1598,36 @@
               </div>
             )}
 
+            {/* Portfolio Gallery Section */}
+            <div className="profile-edit-card" style={{ marginTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--gold)', marginBottom: 0 }}>
+                  <i className="fas fa-briefcase" style={{ marginRight: '8px' }}></i>
+                  {lang === 'en' ? 'Portfolio Gallery' : 'معرض الأعمال'}
+                </h3>
+                {isMe && <button className="btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}>
+                  <i className="fas fa-plus"></i>{lang === 'en' ? 'Add Project' : 'إضافة مشروع'}
+                </button>}
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                {[1,2,3].map(i => (
+                  <div key={i} className="job-card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <img src={`https://picsum.photos/seed/${i + (viewUserId || 'me')}/400/300`} style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} alt="Project" />
+                    <div style={{ padding: '12px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>
+                        {lang === 'en' ? `Project Alpha ${i}` : `مشروع ألفا ${i}`}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {lang === 'en' ? 'UI/UX Design • Web Development' : 'تصميم واجهات • تطوير ويب'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links Grid (Restore if needed or keep existing) */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: '20px', marginTop: '24px' }}>
               {quickLinks.map((item, i) => (
                 <div key={i} className="job-card" style={{ cursor: 'pointer' }} onClick={() => setPage(item.page)}>
@@ -1475,6 +1642,31 @@
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Reviews Section */}
+            <div className="profile-edit-card" style={{ marginTop: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--gold)', marginBottom: '20px' }}>
+                <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
+                {lang === 'en' ? 'Client Reviews' : 'تقييمات العملاء'}
+              </h3>
+              {reviews.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{lang === 'en' ? 'No reviews yet.' : 'لا توجد تقييمات بعد.'}</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {reviews.map((r, i) => (
+                    <div key={i} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <div style={{ color: 'var(--gold)', fontWeight: 700 }}>
+                          {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                        </div>
+                        <small style={{ color: 'var(--text-secondary)' }}>{new Date(r.timestamp).toLocaleDateString()}</small>
+                      </div>
+                      <p style={{ fontSize: '13px', lineHeight: '1.5' }}>{r.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1652,6 +1844,19 @@
           setLoading(false);
           if (result.ok) {
             setDone(true);
+            // Simple AI Matching: Notify freelancers with matching skills
+            firebase.firestore().collection('users').where('role', '==', 'freelancer').get().then(snap => {
+              snap.docs.forEach(doc => {
+                const u = doc.data();
+                const matches = skills.some(s => 
+                  (u.bio || '').toLowerCase().includes(s.toLowerCase()) || 
+                  (u.skills || []).some(us => us.toLowerCase() === s.toLowerCase())
+                );
+                if (matches) {
+                  window.UserDB.addNotification(doc.id, 'info', `A new job matching your skills was posted: ${title}`, 'jobs', result.id);
+                }
+              });
+            });
           } else {
             setError('❌ ' + (result.error || 'Failed to post. Try again.'));
           }
@@ -1829,6 +2034,33 @@
       const [walletNumber, setWalletNumber] = React.useState('');
       const [instapayId, setInstapayId] = React.useState('');
 
+      /* ── Review state ── */
+      const [reviewModal, setReviewModal] = React.useState(null);
+      const [rating, setRating] = React.useState(5);
+      const [comment, setComment] = React.useState('');
+      const [savingReview, setSavingReview] = React.useState(false);
+
+      const openReviewModal = (app) => {
+        setReviewModal(app);
+        setRating(5);
+        setComment('');
+      };
+
+      const handleReview = () => {
+        if (!reviewModal) return;
+        setSavingReview(true);
+        const app = reviewModal;
+        window.UserDB.addReview(app.userId, user.id, rating, comment, app.jobId).then(() => {
+          window.UserDB.updateApplicationStatus(app.id, 'completed', comment).then(() => {
+            setSavingReview(false);
+            setReviewModal(null);
+            setClientApps(prev => prev.map(a => a.id === app.id ? Object.assign({}, a, { status: 'completed' }) : a));
+            const job = myPostedJobs.find(j => j.id === app.jobId);
+            window.UserDB.addNotification(app.userId, 'success', `Project "${job?.title}" completed! Review: ${rating}★`, 'profile');
+          });
+        });
+      };
+
       const [loading, setLoading] = React.useState(true);
 
       /* ── Tab state ── */
@@ -1905,27 +2137,34 @@
         });
       };
 
-      const handleMockPayment = (e) => {
+      const handleRealPayment = async (e) => {
         e.preventDefault();
         setCheckoutState('processing');
-        setTimeout(() => {
-          const { app, message } = checkoutApp;
-          window.UserDB.updateApplicationStatus(app.id, 'accepted', message || (lang === 'en' ? 'Paid via NilePay' : 'تم الدفع عبر NilePay')).then(res => {
-            if (res.ok) {
-              setClientApps(prev => prev.map(a =>
-                a.id === app.id ? Object.assign({}, a, { status: 'accepted', clientMessage: message || a.clientMessage }) : a
-              ));
-              setCheckoutState('success');
-              // Send Notification
-              const job = myPostedJobs.find(j => j.id === app.jobId);
-              const noteMsg = lang === 'en' ? `Application for "${job?.title}" was ACCEPTED & Funded!` : `تم قبول طلبك لوظيفة "${job?.title}" وبدء التمويل!`;
-              window.UserDB.addNotification(app.userId, 'success', noteMsg, 'applications');
-            } else {
-              alert(lang === 'en' ? 'Error processing payment' : 'خطأ في معالجة الدفع');
-              setCheckoutState('form');
-            }
+        
+        try {
+          const job = myPostedJobs.find(j => j.id === checkoutApp.app.jobId);
+          const response = await fetch('/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              application: checkoutApp.app,
+              jobTitle: job?.title || 'Freelance Service',
+              budget: checkoutApp.app.bidAmount || 0
+            }),
           });
-        }, 2000);
+
+          const session = await response.json();
+          if (session.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = session.url;
+          } else {
+            throw new Error(session.error || 'Failed to create checkout session');
+          }
+        } catch (error) {
+          console.error('Stripe Error:', error);
+          alert(lang === 'en' ? 'Payment Error: ' + error.message : 'خطأ في الدفع: ' + error.message);
+          setCheckoutState('form');
+        }
       };
 
       const openMsgModal = (app, action) => { setMsgModal({ app, action }); setMsgText(''); };
@@ -1993,6 +2232,7 @@
         <span className={`app-status-badge app-status-${status || 'pending'}`}>
           {status === 'accepted' ? (lang === 'en' ? '✓ Accepted' : '✓ مقبول')
             : status === 'rejected' ? (lang === 'en' ? '✗ Rejected' : '✗ مرفوض')
+            : status === 'completed' ? (lang === 'en' ? '★ Completed' : '★ مكتمل')
             : (lang === 'en' ? '⏳ Pending' : '⏳ قيد الانتظار')}
         </span>
       );
@@ -2051,7 +2291,14 @@
                   )}
                 </div>
                 <div className="app-card-right">
-                  <StatusBadge status={app.status} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                    <StatusBadge status={app.status} />
+                    {app.status === 'accepted' && (
+                      <button className="btn-secondary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => setPage('workroom', { appId: app.id })}>
+                        <i className="fas fa-rocket"></i> {lang === 'en' ? 'Workroom' : 'الغرفة'}
+                      </button>
+                    )}
+                  </div>
                   <button className="app-withdraw-btn" onClick={() => handleWithdraw(app)} disabled={busy}>
                     {busy
                       ? <span className="spinner" style={{ borderTopColor: '#e74c3c' }}></span>
@@ -2193,6 +2440,16 @@
                                 <i className="fas fa-comment-dots"></i>
                               </button>
                               <StatusBadge status={app.status} />
+                              {app.status === 'accepted' && (
+                                <>
+                                  <button className="applicant-btn accept" style={{ background: 'var(--gold)', color: '#000', borderColor: 'var(--gold)' }} onClick={() => openReviewModal(app)}>
+                                    <i className="fas fa-star"></i>{lang === 'en' ? 'Review' : 'تقييم'}
+                                  </button>
+                                  <button className="applicant-btn chat" onClick={() => setPage('workroom', { appId: app.id })}>
+                                    <i className="fas fa-rocket"></i>{lang === 'en' ? 'Workroom' : 'الغرفة'}
+                                  </button>
+                                </>
+                              )}
                               {app.status !== 'accepted' && (
                                 <button className="applicant-btn accept" disabled={busy} onClick={() => openMsgModal(app, 'accepted')}>
                                   {busy ? <span className="spinner" style={{ borderTopColor: '#10b981' }}></span>
@@ -2321,7 +2578,7 @@
                         ))}
                       </div>
 
-                      <form onSubmit={handleMockPayment}>
+                      <form onSubmit={handleRealPayment}>
                         
                         {/* Card Form */}
                         {paymentMethod === 'card' && (
@@ -2495,6 +2752,43 @@
             </div>
           )}
 
+          {/* Review Modal */}
+          {reviewModal && (
+            <div className="modal-overlay" style={{ zIndex: 1001 }}>
+              <div className="modal" style={{ maxWidth: '400px' }}>
+                <h3 style={{ color: 'var(--gold)' }}>{lang === 'en' ? 'Rate Freelancer' : 'تقييم المستقل'}</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  {lang === 'en' ? `How was your experience with ${reviewModal.applicantName}?` : `كيف كانت تجربتك مع ${reviewModal.applicantName}؟`}
+                </p>
+                
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '28px', marginBottom: '20px' }}>
+                  {[1,2,3,4,5].map(s => (
+                    <i key={s} 
+                       className={`${s <= rating ? 'fas' : 'far'} fa-star`} 
+                       style={{ color: 'var(--gold)', cursor: 'pointer' }}
+                       onClick={() => setRating(s)}></i>
+                  ))}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{lang === 'en' ? 'Your Comment' : 'تعليقك'}</label>
+                  <textarea className="form-input" 
+                            style={{ minHeight: '80px' }}
+                            value={comment} 
+                            onChange={e => setComment(e.target.value)}
+                            placeholder={lang === 'en' ? 'Share your feedback...' : 'اكتب رأيك هنا...'}></textarea>
+                </div>
+
+                <div className="modal-btns">
+                  <button className="btn-secondary" onClick={() => setReviewModal(null)}>{lang === 'en' ? 'Cancel' : 'إلغاء'}</button>
+                  <button className="btn-primary" onClick={handleReview} disabled={savingReview}>
+                    {savingReview ? <span className="spinner"></span> : (lang === 'en' ? 'Submit Review' : 'إرسال التقييم')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="container" style={{ maxWidth: '1100px', paddingTop: '40px', paddingBottom: '60px' }}>
 
             {/* Page header */}
@@ -2568,6 +2862,35 @@
 
       /* ── State ── */
       const [activeTab, setActiveTab] = React.useState('account');
+      const [verifStatus, setVerifStatus] = React.useState(null);
+
+      React.useEffect(() => {
+        if (user) {
+          return window.UserDB.getVerificationStatus(user.id, (status) => {
+            setVerifStatus(status);
+          });
+        }
+      }, [user]);
+
+      const fileInputRef = React.useRef(null);
+      const handleVerifySubmit = () => {
+        fileInputRef.current?.click();
+      };
+
+      const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setSaving(true);
+        try {
+          const url = await window.UserDB.uploadFile(file, `verifications/${user.id}`);
+          await window.UserDB.submitVerification(user.id, url);
+          alert(lang === 'en' ? 'Verification request submitted!' : 'تم تقديم طلب التوثيق!');
+        } catch (err) {
+          alert('Upload error: ' + err.message);
+        } finally {
+          setSaving(false);
+        }
+      };
       const [toast, setToast] = React.useState(null);
       const [saving, setSaving] = React.useState(false);
 
@@ -2704,6 +3027,7 @@
         { key: 'account',       icon: 'fa-user-circle',    label: 'Account Type' },
         { key: 'profile',       icon: 'fa-id-card',        label: 'Profile Info' },
         { key: 'security',      icon: 'fa-shield-alt',     label: 'Security' },
+        { key: 'verification',  icon: 'fa-check-double',   label: 'Verification' },
         { key: 'notifications', icon: 'fa-bell',           label: 'Notifications' },
         { key: 'privacy',       icon: 'fa-user-lock',      label: 'Privacy' },
         { key: 'preferences',   icon: 'fa-sliders-h',      label: 'Preferences' },
@@ -2941,6 +3265,45 @@
                       {saving ? <><span className="spinner"></span> Saving…</> : <><i className="fas fa-key"></i> Change Password</>}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* ─── IDENTITY VERIFICATION ─── */}
+              {activeTab === 'verification' && (
+                <div className="settings-section">
+                  <div className="settings-section-header">
+                    <i className="fas fa-check-double"></i>
+                    <div><h2>Identity Verification</h2><p>Get the blue checkmark to boost trust.</p></div>
+                  </div>
+
+                  {user.isVerified ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', background: 'rgba(16,185,129,0.05)', borderRadius: '12px', border: '1px dashed #10b981' }}>
+                      <i className="fas fa-check-circle" style={{ fontSize: '48px', color: '#10b981', marginBottom: '16px' }}></i>
+                      <h3 style={{ color: '#10b981' }}>Verified Account</h3>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        Your identity has been verified successfully.
+                      </p>
+                    </div>
+                  ) : verifStatus?.status === 'pending' ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', background: 'rgba(241,196,15,0.05)', borderRadius: '12px', border: '1px dashed #f1c40f' }}>
+                      <i className="fas fa-clock" style={{ fontSize: '48px', color: '#f1c40f', marginBottom: '16px' }}></i>
+                      <h3 style={{ color: '#f1c40f' }}>Verification Pending</h3>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        Our team is reviewing your ID. This usually takes 24-48 hours.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      <h4 style={{ marginBottom: '12px', fontWeight: 800 }}>Get the Blue Checkmark</h4>
+                      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.6' }}>
+                        Verified users gain more trust from clients and appear higher in search results. Upload a clear photo of your ID or Passport to start.
+                      </p>
+                      <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleFileChange} />
+                      <button className="btn-primary" onClick={handleVerifySubmit} disabled={saving}>
+                        {saving ? <><span className="spinner"></span> {lang === 'en' ? 'Uploading...' : 'جاري الرفع...'}</> : <><i className="fas fa-upload"></i> {lang === 'en' ? 'Upload ID Photo' : 'رفع صورة الهوية'}</>}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3857,6 +4220,25 @@
       const [applications, setApplications] = React.useState([]);
       const [categories, setCategories] = React.useState([]);
       const [skills, setSkills] = React.useState([]);
+      const [disputes, setDisputes] = React.useState([]);
+      const [verifications, setVerifications] = React.useState([]);
+      
+      const fetchDisputes = () => {
+        firebase.firestore().collection('applications').where('status', '==', 'disputed').get().then(snap => {
+          setDisputes(snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data())));
+        });
+      };
+
+      const handleResolveDispute = (appId, resolution) => {
+        firebase.firestore().collection('applications').doc(appId).update({
+          status: 'accepted', // or resolution
+          resolvedAt: new Date().toISOString(),
+          adminResolution: resolution
+        }).then(() => {
+          showToast('Dispute resolved.');
+          setDisputes(prev => prev.filter(d => d.id !== appId));
+        });
+      };
       const [loading, setLoading] = React.useState(false);
       const [toast, setToast] = React.useState(null);
       const [userSearch, setUserSearch] = React.useState('');
@@ -3878,6 +4260,14 @@
         setTimeout(() => setToast(null), 3500);
       };
 
+      const handleApproveVerification = (userId) => {
+        window.UserDB.approveVerification(userId).then(() => {
+          showToast('Verification approved!');
+          setVerifications(prev => prev.filter(v => v.userId !== userId));
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, isVerified: true } : u));
+        }).catch(err => showToast('Error: ' + err.message, 'error'));
+      };
+
       const loadData = React.useCallback(() => {
         setLoading(true);
         Promise.all([
@@ -3885,17 +4275,22 @@
           window.UserDB.listJobs(),
           window.UserDB.listCategories(),
           window.UserDB.listSkills(),
-        ]).then(([u, j, c, s]) => {
+          window.UserDB.listPendingVerifications(),
+        ]).then(([u, j, c, s, v]) => {
           setUsers(u);
           setJobs(j);
           setCategories(c);
           setSkills(s);
+          if (v.ok) setVerifications(v.list);
           setLoading(false);
         }).catch(() => setLoading(false));
-        // Load all applications by querying collection directly
+        // Load all applications
         firebase.firestore().collection('applications').get()
           .then(snap => setApplications(snap.docs.map(d => Object.assign({ id: d.id }, d.data()))))
           .catch(() => {});
+        // Load disputes
+        firebase.firestore().collection('applications').where('status', '==', 'disputed').get()
+          .then(snap => setDisputes(snap.docs.map(d => Object.assign({ id: d.id }, d.data()))));
       }, []);
 
       React.useEffect(() => { loadData(); }, [loadData]);
@@ -3947,6 +4342,27 @@
         firebase.firestore().collection('jobs').doc(jid).delete()
           .then(() => { setJobs(prev => prev.filter(j => j.id !== jid)); showToast('Job deleted.'); })
           .catch(err => showToast('Error: ' + err.message, 'error'));
+      };
+
+      const handleToggleFeatured = (uid, currentStatus) => {
+        const newStatus = !currentStatus;
+        firebase.firestore().collection('users').doc(uid).update({ isFeatured: newStatus })
+          .then(() => {
+            setUsers(prev => prev.map(u => u.id === uid ? { ...u, isFeatured: newStatus } : u));
+            showToast(newStatus ? 'User is now featured!' : 'User featured status removed.');
+          })
+          .catch(err => showToast('Error: ' + err.message, 'error'));
+      };
+
+      const handleGrantBadge = (uid, currentBadges) => {
+        const badgeName = window.prompt('Enter badge name (e.g. English Expert, Top Rated):');
+        if (!badgeName) return;
+        firebase.firestore().collection('users').doc(uid).update({
+          badges: firebase.firestore.FieldValue.arrayUnion(badgeName)
+        }).then(() => {
+          setUsers(prev => prev.map(u => u.id === uid ? { ...u, badges: [...(u.badges || []), badgeName] } : u));
+          showToast('Badge granted!');
+        }).catch(err => showToast('Error: ' + err.message, 'error'));
       };
 
       const handleUpdateJob = (jid, data) => {
@@ -4015,6 +4431,9 @@
       const sidebarItems = [
         { key: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
         { key: 'users', icon: 'fa-users', label: 'Users' },
+        { key: 'verifications', icon: 'fa-check-double', label: 'Verifications' },
+        { key: 'disputes', icon: 'fa-exclamation-triangle', label: 'Disputes' },
+        { key: 'revenue', icon: 'fa-chart-line', label: 'Revenue & Finance' },
         { key: 'jobs', icon: 'fa-briefcase', label: 'Jobs' },
         { key: 'applications', icon: 'fa-file-alt', label: 'Applications' },
         { key: 'taxonomy', icon: 'fa-layer-group', label: 'Categories & Skills' },
@@ -4192,6 +4611,11 @@
                               <div>
                                 <div className="admin-table-name">{u.name}</div>
                                 <div className="admin-table-sub">@{u.username}</div>
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                  {(u.badges || []).map((b, i) => (
+                                    <span key={i} style={{ fontSize: '9px', background: '#6c63ff22', color: '#6c63ff', padding: '1px 5px', borderRadius: '4px' }}>{b}</span>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -4210,6 +4634,22 @@
                           <td className="admin-table-sub">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
                           <td>
                             <div className="admin-table-actions">
+                              <button 
+                                className="admin-btn" 
+                                onClick={() => handleGrantBadge(u.id, u.badges || [])} 
+                                title="Grant Badge"
+                                style={{ color: '#6c63ff' }}
+                              >
+                                <i className="fas fa-award"></i>
+                              </button>
+                              <button 
+                                className={`admin-btn ${u.isFeatured ? 'admin-btn-warning' : ''}`} 
+                                onClick={() => handleToggleFeatured(u.id, u.isFeatured)} 
+                                title="Toggle Featured"
+                                style={{ color: u.isFeatured ? 'var(--gold)' : '' }}
+                              >
+                                <i className={`fas fa-star`}></i>
+                              </button>
                               <button className="admin-btn admin-btn-danger" onClick={() => handleDeleteUser(u.id)} title="Delete user">
                                 <i className="fas fa-trash"></i>
                               </button>
@@ -4225,6 +4665,176 @@
                 </div>
               </div>
             )}
+
+            {/* ── VERIFICATIONS ── */}
+            {activeTab === 'verifications' && (
+              <div className="admin-content">
+                <div className="admin-toolbar">
+                  <h2 style={{ fontSize: '18px', fontWeight: 800 }}>Pending Verification Requests</h2>
+                  <span className="admin-count">{verifications.length} pending</span>
+                </div>
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>ID Photo</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {verifications.map(v => {
+                        const u = users.find(usr => usr.id === v.userId);
+                        return (
+                          <tr key={v.userId}>
+                            <td>
+                              <div className="admin-table-user">
+                                <div className="admin-avatar sm">{(u?.name?.[0] || '?').toUpperCase()}</div>
+                                <div>
+                                  <div className="admin-table-name">{u?.name || 'Unknown'}</div>
+                                  <div className="admin-table-sub">{u?.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <a href={v.idPhoto} target="_blank" rel="noopener noreferrer" className="admin-btn" style={{ fontSize: '11px', padding: '4px 8px' }}>
+                                <i className="fas fa-image"></i> View ID
+                              </a>
+                            </td>
+                            <td className="admin-table-sub">{new Date(v.timestamp).toLocaleString()}</td>
+                            <td>
+                              <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => handleApproveVerification(v.userId)}>
+                                <i className="fas fa-check"></i> Approve
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {verifications.length === 0 && (
+                        <tr><td colSpan="4" className="admin-empty">No pending verifications</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── DISPUTES ── */}
+            {activeTab === 'disputes' && (
+              <div className="admin-content">
+                <div className="admin-toolbar">
+                  <h2 style={{ fontSize: '18px', fontWeight: 800 }}>Project Disputes</h2>
+                  <span className="admin-count">{disputes.length} active</span>
+                </div>
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Project / Application ID</th>
+                        <th>Reporter</th>
+                        <th>Reason</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {disputes.map(d => {
+                        const reporter = users.find(u => u.id === d.disputeOpenedBy);
+                        return (
+                          <tr key={d.id}>
+                            <td>
+                              <div style={{ fontWeight: 800, fontSize: '13px' }}>{d.jobTitle || 'Application'}</div>
+                              <div className="admin-table-sub" style={{ fontFamily: 'monospace' }}>{d.id}</div>
+                            </td>
+                            <td>
+                              <div className="admin-table-name">{reporter?.name || 'Unknown'}</div>
+                              <div className="admin-table-sub">{reporter?.role}</div>
+                            </td>
+                            <td style={{ maxWidth: '250px' }}>
+                              <div style={{ fontSize: '12px', whiteSpace: 'normal' }}>{d.disputeReason}</div>
+                            </td>
+                            <td className="admin-table-sub">{new Date(d.disputeAt).toLocaleDateString()}</td>
+                            <td>
+                              <div className="admin-table-actions">
+                                <button className="admin-btn admin-btn-success" title="Resolve & Keep Active" onClick={() => handleResolveDispute(d.id, 'Resolved - Keep Active')}>
+                                  <i className="fas fa-check"></i>
+                                </button>
+                                <button className="admin-btn admin-btn-danger" title="Resolve & Cancel" onClick={() => handleResolveDispute(d.id, 'Resolved - Cancelled')}>
+                                  <i className="fas fa-times"></i>
+                                </button>
+                                <button className="admin-btn admin-btn-primary" title="Go to Workroom" onClick={() => setPage('workroom', { appId: d.id })}>
+                                  <i className="fas fa-external-link-alt"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {disputes.length === 0 && (
+                        <tr><td colSpan="5" className="admin-empty">No active disputes</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── REVENUE ── */}
+            {activeTab === 'revenue' && (() => {
+              const totalSpent = users.reduce((acc, u) => acc + (u.totalSpent || 0), 0);
+              const totalEarnings = users.reduce((acc, u) => acc + (u.totalEarnings || 0), 0);
+              const profit = totalSpent - totalEarnings;
+              const profitMargin = totalSpent > 0 ? (profit / totalSpent * 100).toFixed(1) : 0;
+
+              return (
+                <div className="admin-content">
+                  <div className="admin-toolbar">
+                    <h2 style={{ fontSize: '18px', fontWeight: 800 }}>Financial Overview</h2>
+                  </div>
+                  
+                  <div className="admin-stats-grid" style={{ marginBottom: '30px' }}>
+                    <div className="admin-stat-card">
+                      <div className="admin-stat-icon" style={{ background: '#10b98118', color: '#10b981' }}><i className="fas fa-money-bill-wave"></i></div>
+                      <div className="admin-stat-info">
+                        <div className="admin-stat-label">Total Revenue (Gross)</div>
+                        <div className="admin-stat-value">{totalSpent.toLocaleString()} EGP</div>
+                      </div>
+                    </div>
+                    <div className="admin-stat-card">
+                      <div className="admin-stat-icon" style={{ background: '#f59e0b18', color: '#f59e0b' }}><i className="fas fa-hand-holding-usd"></i></div>
+                      <div className="admin-stat-info">
+                        <div className="admin-stat-label">Total Payouts</div>
+                        <div className="admin-stat-value">{totalEarnings.toLocaleString()} EGP</div>
+                      </div>
+                    </div>
+                    <div className="admin-stat-card">
+                      <div className="admin-stat-icon" style={{ background: '#6c63ff18', color: '#6c63ff' }}><i className="fas fa-university"></i></div>
+                      <div className="admin-stat-info">
+                        <div className="admin-stat-label">Net Platform Profit</div>
+                        <div className="admin-stat-value">{profit.toLocaleString()} EGP</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="admin-panel">
+                    <div className="admin-panel-header"><i className="fas fa-chart-pie"></i> Profit Margin Analysis</div>
+                    <div className="admin-panel-body">
+                      <div style={{ marginBottom: '10px', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Platform Commission ({profitMargin}%)</span>
+                        <span>{profit.toLocaleString()} EGP</span>
+                      </div>
+                      <div style={{ height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{ width: `${profitMargin}%`, height: '100%', background: 'var(--gold)' }}></div>
+                      </div>
+                      <p style={{ marginTop: '20px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        Note: Profit is calculated as the difference between client spending and freelancer earnings. This represents the total commission earned by the platform.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── JOBS ── */}
             {activeTab === 'jobs' && (
@@ -5240,8 +5850,27 @@
       const [conversations, setConversations] = useState([]);
       const [activeConvo, setActiveConvo] = useState(null);
       const [input, setInput] = useState('');
+      const [isOtherTyping, setIsOtherTyping] = useState(false);
+      const typingTimeoutRef = useRef(null);
       const dir = lang === 'ar' ? 'rtl' : 'ltr';
       const t = window.TRANSLATIONS[lang].messages_page;
+
+      useEffect(() => {
+        if (!user || !activeConvo) return;
+        return window.UserDB.subscribeToTypingStatus(activeConvo.otherId, user.id, setIsOtherTyping);
+      }, [user, activeConvo]);
+
+      const handleInputChange = (e) => {
+        setInput(e.target.value);
+        if (!user || !activeConvo) return;
+
+        window.UserDB.setTypingStatus(user.id, activeConvo.otherId, true);
+        
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          window.UserDB.setTypingStatus(user.id, activeConvo.otherId, false);
+        }, 3000);
+      };
 
       useEffect(() => {
         if (!user) return;
@@ -5316,18 +5945,26 @@
                   <>
                     <div className="chat-header">
                       <div className="convo-avatar">{activeConvo.otherId[0].toUpperCase()}</div>
-                      <div className="convo-name">User {activeConvo.otherId.substring(0, 5)}</div>
+                      <div>
+                        <div className="convo-name">User {activeConvo.otherId.substring(0, 5)}</div>
+                        {isOtherTyping && <div style={{ fontSize: '11px', color: 'var(--gold)' }}>typing...</div>}
+                      </div>
                     </div>
                     <div className="chat-messages">
                       {activeMsgs.map(m => (
                         <div key={m.id} className={`msg-bubble ${m.senderId === user.id ? 'msg-bubble-sent' : 'msg-bubble-received'}`}>
                           {m.content}
-                          <small className="msg-time">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
+                            <small className="msg-time">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+                            {m.senderId === user.id && (
+                              <i className={`fas fa-check${m.isRead ? '-double' : ''}`} style={{ fontSize: '10px', color: m.isRead ? '#3498db' : 'inherit' }}></i>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                     <div className="chat-input-area">
-                      <input className="form-input" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder={t.type_msg} />
+                      <input className="form-input" value={input} onChange={handleInputChange} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder={t.type_msg} />
                       <button className="chatbot-send" onClick={sendMessage}><i className="fas fa-paper-plane"></i></button>
                     </div>
                   </>
@@ -5346,7 +5983,7 @@
     /* ============================================================
        NOTIFICATIONS PAGE
        ============================================================ */
-    function NotificationsPage({ lang, user }) {
+    function NotificationsPage({ lang, user, setPage }) {
       const [notes, setNotes] = useState([]);
       const dir = lang === 'ar' ? 'rtl' : 'ltr';
       const t = window.TRANSLATIONS[lang].notifications_page;
@@ -5366,7 +6003,13 @@
             </div>
             {notes.length === 0 ? <div className="no-jobs"><i className="fas fa-bell-slash"></i><p>{t.no_notes}</p></div> :
              notes.map(n => (
-              <div key={n.id} className={`note-item ${!n.isRead ? 'unread' : ''}`} onClick={() => markRead(n.id)}>
+              <div key={n.id} className={`note-item ${!n.isRead ? 'unread' : ''}`} 
+                   onClick={() => {
+                     window.UserDB.markNotificationRead(n.id);
+                     if (n.page === 'workroom' && n.appId) setPage('workroom', { appId: n.appId });
+                     else if (n.page) setPage(n.page);
+                   }}
+                   style={{ cursor: n.page ? 'pointer' : 'default' }}>
                 <div className="note-icon" style={{background: n.type==='success'?'rgba(46,204,113,0.1)':'rgba(0,116,217,0.1)', color: n.type==='success'?'#2ecc71':'var(--primary-blue)'}}>
                   <i className={`fas fa-${n.type==='message'?'envelope':(n.type==='success'?'check-circle':'info-circle')}`}></i>
                 </div>
@@ -5382,16 +6025,653 @@
     }
 
     /* ============================================================
+       DASHBOARD PAGE
+       ============================================================ */
+    function DashboardPage({ lang, user, setPage }) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const [stats, setStats] = React.useState({ total: 0, active: 0, pending: 0 });
+      const [activeProjects, setActiveProjects] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        if (!user) return;
+        setLoading(true);
+        
+        // Fetch stats based on role
+        if (user.role === 'freelancer') {
+          // Freelancer stats
+          firebase.firestore().collection('applications').where('userId', '==', user.id).get().then(snap => {
+            const apps = snap.docs.map(d => d.data());
+            const active = apps.filter(a => a.status === 'accepted' || a.status === 'disputed').length;
+            const pending = apps.filter(a => a.status === 'pending').length;
+            setStats({ total: user.totalEarnings || 0, active, pending });
+            
+            // Get active project details
+            const activeApps = snap.docs.filter(d => d.data().status === 'accepted' || d.data().status === 'disputed')
+              .map(d => Object.assign({ id: d.id }, d.data()));
+            setActiveProjects(activeApps);
+            setLoading(false);
+          });
+        } else {
+          // Client stats
+          window.UserDB.listMyPostedJobs(user.id).then(jobs => {
+            const activeJobs = jobs.length;
+            firebase.firestore().collection('applications').where('clientId', '==', user.id).get().then(snap => {
+              const apps = snap.docs.map(d => d.data());
+              const activeHires = apps.filter(a => a.status === 'accepted' || a.status === 'disputed').length;
+              setStats({ total: user.totalSpent || 0, active: activeHires, pending: activeJobs });
+              
+              const activeApps = snap.docs.filter(d => d.data().status === 'accepted' || d.data().status === 'disputed')
+                .map(d => Object.assign({ id: d.id }, d.data()));
+              setActiveProjects(activeApps);
+              setLoading(false);
+            });
+          });
+        }
+      }, [user]);
+
+      if (loading) return <div className="loading-screen"><span className="spinner"></span></div>;
+
+      const t = {
+        en: { 
+          title: 'Your Dashboard', 
+          earning: 'Total Earnings', 
+          spending: 'Total Spent', 
+          active: 'Active Projects', 
+          pending_freelancer: 'Pending Bids',
+          pending_client: 'Jobs Posted',
+          projects_title: 'Recent Active Projects',
+          no_projects: 'No active projects at the moment.'
+        },
+        ar: { 
+          title: 'لوحة التحكم', 
+          earning: 'إجمالي الأرباح', 
+          spending: 'إجمالي المصاريف', 
+          active: 'المشاريع النشطة', 
+          pending_freelancer: 'عروض قيد الانتظار',
+          pending_client: 'وظائف منشورة',
+          projects_title: 'المشاريع النشطة الأخيرة',
+          no_projects: 'لا توجد مشاريع نشطة حالياً.'
+        }
+      }[lang];
+
+      return (
+        <div className="dashboard-page" dir={dir}>
+          <div className="container">
+            <div className="section-header">
+              <h1>{t.title}</h1>
+            </div>
+
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+              <div className="job-card" style={{ textAlign: 'center', padding: '30px', borderBottom: '4px solid var(--gold)' }}>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '10px' }}>{user.role === 'freelancer' ? t.earning : t.spending}</div>
+                <div style={{ fontSize: '32px', fontWeight: 900, color: 'var(--gold)' }}>{stats.total.toLocaleString()} EGP</div>
+              </div>
+              <div className="job-card" style={{ textAlign: 'center', padding: '30px', borderBottom: '4px solid #3498db' }}>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '10px' }}>{t.active}</div>
+                <div style={{ fontSize: '32px', fontWeight: 900 }}>{stats.active}</div>
+              </div>
+              <div className="job-card" style={{ textAlign: 'center', padding: '30px', borderBottom: '4px solid #10b981' }}>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '10px' }}>{user.role === 'freelancer' ? t.pending_freelancer : t.pending_client}</div>
+                <div style={{ fontSize: '32px', fontWeight: 900 }}>{stats.pending}</div>
+              </div>
+            </div>
+
+            <div className="job-card">
+              <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '24px' }}>{t.projects_title}</h2>
+              {activeProjects.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{t.no_projects}</div>
+              ) : (
+                <div className="active-projects-list" style={{ display: 'grid', gap: '16px' }}>
+                  {activeProjects.map(p => (
+                    <div key={p.id} className="project-item" style={{ 
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' 
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 800 }}>{p.jobTitle || 'Active Project'}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {user.role === 'freelancer' ? `Client: ${p.clientName}` : `Freelancer: ${p.applicantName}`}
+                        </div>
+                      </div>
+                      <button className="btn-primary" style={{ padding: '8px 16px', fontSize: '12px' }} onClick={() => setPage('workroom', { appId: p.id })}>
+                        <i className="fas fa-rocket"></i> {lang === 'en' ? 'Open Workroom' : 'فتح غرفة العمل'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============================================================
+       MEMBERSHIP PAGE
+       ============================================================ */
+    function MembershipPage({ lang, user, setUser }) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const [upgrading, setUpgrading] = React.useState(null);
+
+      const plans = [
+        { 
+          id: 'free', 
+          name: lang === 'en' ? 'Basic' : 'الأساسية', 
+          price: '0', 
+          period: lang === 'en' ? 'Free Forever' : 'مجاناً للأبد',
+          features: [
+            lang === 'en' ? '5 Bids per month' : '5 عروض شهرياً',
+            lang === 'en' ? 'Standard Support' : 'دعم فني عادي',
+            lang === 'en' ? 'Profile Visibility' : 'ظهور الملف الشخصي'
+          ],
+          color: 'var(--text-secondary)'
+        },
+        { 
+          id: 'pro', 
+          name: lang === 'en' ? 'Pro' : 'المحترف', 
+          price: '199', 
+          period: lang === 'en' ? '/ month' : '/ شهرياً',
+          features: [
+            lang === 'en' ? '50 Bids per month' : '50 عرضاً شهرياً',
+            lang === 'en' ? 'Priority Support' : 'دعم فني ذو أولوية',
+            lang === 'en' ? 'Verified Badge' : 'شارة توثيق',
+            lang === 'en' ? 'Lower Commission' : 'عمولة أقل'
+          ],
+          color: '#3498db',
+          popular: true
+        },
+        { 
+          id: 'elite', 
+          name: lang === 'en' ? 'Elite' : 'النخبة', 
+          price: '499', 
+          period: lang === 'en' ? '/ month' : '/ شهرياً',
+          features: [
+            lang === 'en' ? 'Unlimited Bids' : 'عروض غير محدودة',
+            lang === 'en' ? 'Dedicated Manager' : 'مدير حساب مخصص',
+            lang === 'en' ? 'Early Job Access' : 'وصول مبكر للوظائف',
+            lang === 'en' ? 'Featured Profile' : 'بروفايل مميز'
+          ],
+          color: 'var(--gold)'
+        }
+      ];
+
+      const handleUpgrade = (planId) => {
+        if (planId === user.membership) return;
+        setUpgrading(planId);
+        // Simulate payment/upgrade
+        setTimeout(() => {
+          const updates = { 
+            membership: planId, 
+            bidsRemaining: planId === 'pro' ? 50 : (planId === 'elite' ? 9999 : 5) 
+          };
+          window.UserDB.updateProfile(user.id, updates).then(() => {
+            setUser(prev => ({ ...prev, ...updates }));
+            setUpgrading(null);
+            alert(lang === 'en' ? `Upgraded to ${planId.toUpperCase()}!` : `تمت الترقية إلى ${planId.toUpperCase()}!`);
+          });
+        }, 1500);
+      };
+
+      return (
+        <div className="membership-page" dir={dir}>
+          <div className="container">
+            <div className="section-header" style={{ textAlign: 'center', marginBottom: '60px' }}>
+              <span className="tag">{lang === 'en' ? 'PRICING PLANS' : 'خطط الأسعار'}</span>
+              <h1 style={{ fontSize: '40px', marginTop: '10px' }}>{lang === 'en' ? 'Choose Your Plan' : 'اختر خطتك'}</h1>
+              <p style={{ maxWidth: '600px', margin: '15px auto 0', color: 'var(--text-secondary)' }}>
+                {lang === 'en' ? 'Unlock more opportunities and boost your success on NileLancers.' : 'افتح المزيد من الفرص وعزز نجاحك على ناي لانسرز.'}
+              </p>
+              {user?.role === 'freelancer' && (
+                <div style={{ marginTop: '20px', fontWeight: 800, color: 'var(--gold)' }}>
+                  {lang === 'en' ? `Bids Remaining: ${user.bidsRemaining || 0}` : `العروض المتبقية: ${user.bidsRemaining || 0}`}
+                </div>
+              )}
+            </div>
+
+            <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+              {plans.map(p => (
+                <div key={p.id} className={`job-card ${p.popular ? 'popular' : ''}`} style={{ 
+                  padding: '40px', position: 'relative', borderTop: `6px solid ${p.color}`,
+                  transform: p.popular ? 'scale(1.05)' : 'none', zIndex: p.popular ? 2 : 1
+                }}>
+                  {p.popular && <div style={{ 
+                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'var(--gold)', color: '#000', padding: '4px 15px', borderRadius: '20px', fontSize: '11px', fontWeight: 900
+                  }}>{lang === 'en' ? 'MOST POPULAR' : 'الأكثر شيوعاً'}</div>}
+                  
+                  <div style={{ fontSize: '20px', fontWeight: 800, marginBottom: '10px' }}>{p.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginBottom: '30px' }}>
+                    <span style={{ fontSize: '36px', fontWeight: 900 }}>EGP {p.price}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{p.period}</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '15px', marginBottom: '40px' }}>
+                    {p.features.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+                        <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    className={p.id === user?.membership ? 'btn-secondary' : (p.id === 'pro' ? 'btn-primary' : 'btn-secondary')} 
+                    style={{ width: '100%', padding: '15px' }}
+                    onClick={() => handleUpgrade(p.id)}
+                    disabled={upgrading || p.id === user?.membership}
+                  >
+                    {upgrading === p.id ? <span className="spinner"></span> : 
+                      (p.id === user?.membership ? (lang === 'en' ? 'Current Plan' : 'خطتك الحالية') : (lang === 'en' ? 'Upgrade Now' : 'اشترك الآن'))}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============================================================
+       LEGAL PAGE
+       ============================================================ */
+    function LegalPage({ lang, type }) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const isTerms = type === 'terms';
+      
+      const content = {
+        terms: {
+          title: lang === 'en' ? 'Terms of Service' : 'شروط الاستخدام',
+          body: lang === 'en' ? (
+            <>
+              <h3>1. Introduction</h3>
+              <p>Welcome to NileLancers. By using our platform, you agree to these terms...</p>
+              <h3>2. User Accounts</h3>
+              <p>Users must provide accurate information and are responsible for their account security...</p>
+              <h3>3. Payments & Fees</h3>
+              <p>NileLancers charges a commission on successful projects as outlined in the membership plans...</p>
+            </>
+          ) : (
+            <>
+              <h3>1. مقدمة</h3>
+              <p>مرحباً بكم في ناي لانسرز. باستخدامكم لمنصتنا، فإنكم توافقون على هذه الشروط...</p>
+              <h3>2. حسابات المستخدمين</h3>
+              <p>يجب على المستخدمين تقديم معلومات دقيقة وهم مسؤولون عن أمن حساباتهم...</p>
+              <h3>3. المدفوعات والرسوم</h3>
+              <p>تحصل ناي لانسرز على عمولة من المشاريع الناجحة كما هو موضح في خطط العضوية...</p>
+            </>
+          )
+        },
+        privacy: {
+          title: lang === 'en' ? 'Privacy Policy' : 'سياسة الخصوصية',
+          body: lang === 'en' ? (
+            <>
+              <h3>1. Data Collection</h3>
+              <p>We collect information you provide to us directly, such as when you create an account...</p>
+              <h3>2. Use of Information</h3>
+              <p>We use the information we collect to provide, maintain, and improve our services...</p>
+              <h3>3. Data Security</h3>
+              <p>We implement security measures to protect your personal information...</p>
+            </>
+          ) : (
+            <>
+              <h3>1. جمع البيانات</h3>
+              <p>نحن نجمع المعلومات التي تقدمها لنا مباشرة، مثل عند إنشاء حساب...</p>
+              <h3>2. استخدام المعلومات</h3>
+              <p>نحن نستخدم المعلومات التي نجمعها لتوفير خدماتنا وصيانتها وتحسينها...</p>
+              <h3>3. أمن البيانات</h3>
+              <p>نحن نطبق تدابير أمنية لحماية معلوماتك الشخصية...</p>
+            </>
+          )
+        }
+      }[type] || content.terms;
+
+      return (
+        <div className="legal-page" dir={dir}>
+          <div className="container" style={{ maxWidth: '800px', padding: '60px 20px' }}>
+            <h1 style={{ fontSize: '36px', marginBottom: '40px', fontWeight: 900 }}>{content.title}</h1>
+            <div className="legal-content" style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
+              {content.body}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============================================================
+       BLOG PAGE
+       ============================================================ */
+    function BlogPage({ lang, setPage, postId }) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      const posts = [
+        {
+          id: '1',
+          title: lang === 'en' ? 'How to start freelancing in Egypt' : 'كيف تبدأ العمل الحر في مصر',
+          excerpt: lang === 'en' ? 'Everything you need to know about starting your career...' : 'كل ما تحتاجه لتبدأ مسيرتك المهنية...',
+          date: '2026-04-20',
+          image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=60',
+          content: lang === 'en' ? 'Full article about freelancing in Egypt...' : 'مقال كامل عن العمل الحر في مصر...'
+        },
+        {
+          id: '2',
+          title: lang === 'en' ? 'Top 5 skills for 2026' : 'أهم 5 مهارات لعام 2026',
+          excerpt: lang === 'en' ? 'Discover the most in-demand skills in the Egyptian market...' : 'اكتشف المهارات الأكثر طلباً في السوق المصري...',
+          date: '2026-04-25',
+          image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60',
+          content: lang === 'en' ? 'Full article about skills...' : 'مقال كامل عن المهارات...'
+        }
+      ];
+
+      const post = posts.find(p => p.id === postId);
+
+      if (postId && post) {
+        return (
+          <div className="blog-page" dir={dir}>
+            <div className="container" style={{ maxWidth: '800px', padding: '60px 20px' }}>
+              <button className="btn-secondary" onClick={() => setPage('blog')} style={{ marginBottom: '30px' }}>
+                <i className="fas fa-arrow-left"></i> {lang === 'en' ? 'Back to Blog' : 'العودة للمدونة'}
+              </button>
+              <img src={post.image} style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '20px', marginBottom: '40px' }} />
+              <h1 style={{ fontSize: '40px', fontWeight: 900, marginBottom: '20px' }}>{post.title}</h1>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '40px' }}>{new Date(post.date).toLocaleDateString()}</div>
+              <div style={{ lineHeight: '1.8', fontSize: '18px', color: 'var(--text-secondary)' }}>{post.content}</div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="blog-page" dir={dir}>
+          <div className="container" style={{ padding: '60px 20px' }}>
+            <div className="section-header" style={{ textAlign: 'center', marginBottom: '60px' }}>
+              <span className="tag">{lang === 'en' ? 'ARTICLES' : 'مقالات'}</span>
+              <h1 style={{ fontSize: '40px', marginTop: '10px' }}>{lang === 'en' ? 'NileLancers Blog' : 'مدونة ناي لانسرز'}</h1>
+            </div>
+
+            <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px' }}>
+              {posts.map(p => (
+                <div key={p.id} className="job-card" onClick={() => setPage('blog', { id: p.id })} style={{ cursor: 'pointer', overflow: 'hidden', padding: '0' }}>
+                  <img src={p.image} style={{ width: '100%', height: '220px', objectFit: 'cover' }} />
+                  <div style={{ padding: '24px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 800, marginBottom: '10px' }}>{new Date(p.date).toLocaleDateString()}</div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '12px' }}>{p.title}</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '20px' }}>{p.excerpt}</p>
+                    <span style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '14px' }}>{lang === 'en' ? 'Read More' : 'اقرأ المزيد'} <i className="fas fa-arrow-right"></i></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============================================================
        HOME PAGE
        ============================================================ */
-    function HomePage({ lang, setPage, user }) {
+    /* ============================================================
+       WORKROOM PAGE
+       ============================================================ */
+    function WorkroomPage({ lang, user, setPage, appId }) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const [app, setApp] = React.useState(null);
+      const [job, setJob] = React.useState(null);
+      const [files, setFiles] = React.useState([]);
+      const [milestones, setMilestones] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        if (!appId) return;
+        firebase.firestore().collection('applications').doc(appId).get().then(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            setApp(Object.assign({ id: doc.id }, data));
+            firebase.firestore().collection('jobs').doc(data.jobId).get().then(jdoc => {
+              if (jdoc.exists) setJob(Object.assign({ id: jdoc.id }, jdoc.data()));
+              setLoading(false);
+            });
+            
+            // Listen for files
+            const unsubFiles = firebase.firestore().collection('workrooms').doc(appId).collection('files')
+              .orderBy('timestamp', 'desc').onSnapshot(snap => {
+                setFiles(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+              });
+              
+            // Listen for milestones
+            const unsubMiles = firebase.firestore().collection('workrooms').doc(appId).collection('milestones')
+              .orderBy('timestamp', 'asc').onSnapshot(snap => {
+                setMilestones(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+              });
+              
+            return () => { unsubFiles(); unsubMiles(); };
+          }
+        });
+      }, [appId]);
+
+      const fileInputRef = React.useRef(null);
+      const [uploading, setUploading] = React.useState(false);
+      
+      const handleAddMilestone = () => {
+        if (user.id !== app.clientId) return alert('Only clients can add milestones.');
+        const title = prompt(lang === 'en' ? 'Milestone Title:' : 'عنوان المرحلة:');
+        if (title) {
+          firebase.firestore().collection('workrooms').doc(appId).collection('milestones').add({
+            title, status: 'pending', timestamp: new Date().toISOString()
+          });
+        }
+      };
+
+      const handleToggleMilestone = (mid, currentStatus) => {
+        if (user.id !== app.clientId) return alert('Only clients can approve milestones.');
+        const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+        firebase.firestore().collection('workrooms').doc(appId).collection('milestones').doc(mid).update({
+          status: newStatus
+        });
+        if (newStatus === 'completed') {
+          window.UserDB.addNotification(app.userId, 'success', `Milestone completed: ${milestones.find(m => m.id === mid).title}`, 'workroom', appId);
+        }
+      };
+
+      const handleOpenDispute = () => {
+        const reason = prompt(lang === 'en' ? 'Reason for dispute:' : 'سبب النزاع:');
+        if (reason) {
+          firebase.firestore().collection('applications').doc(appId).update({
+            status: 'disputed',
+            disputeReason: reason,
+            disputeOpenedBy: user.id,
+            disputeAt: new Date().toISOString()
+          }).then(() => {
+            alert(lang === 'en' ? 'Dispute opened. An admin will review this project.' : 'تم فتح نزاع. سيقوم المسؤول بمراجعة المشروع.');
+            window.UserDB.addNotification(user.id === app.userId ? app.clientId : app.userId, 'warning', `A dispute has been opened for project: ${job.title}`, 'workroom', appId);
+          });
+        }
+      };
+
+      const handleUploadFile = () => {
+        fileInputRef.current?.click();
+      };
+
+      const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+          const url = await window.UserDB.uploadFile(file, `workrooms/${appId}`);
+          await firebase.firestore().collection('workrooms').doc(appId).collection('files').add({
+            name: file.name, url, senderId: user.id, senderName: user.name, timestamp: new Date().toISOString()
+          });
+          window.UserDB.addNotification(user.id === app.userId ? app.clientId : app.userId, 'info', `${user.name} uploaded a file: ${file.name}`, 'workroom', appId);
+        } catch (err) {
+          alert('Upload error: ' + err.message);
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      if (loading) return <div className="loading-screen"><div className="spinner"></div></div>;
+
+      return (
+        <div className="workroom-page fade-in" dir={dir}>
+          <div className="container" style={{ maxWidth: '1000px', padding: '40px 20px' }}>
+            <div className="section-header" style={{ marginBottom: '30px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span className="tag" style={{ background: 'var(--gold)', color: '#000' }}>
+                    <i className="fas fa-rocket"></i> {lang === 'en' ? 'Active Project' : 'مشروع نشط'}
+                  </span>
+                  <h1 style={{ marginTop: '10px' }}>{job?.title}</h1>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    {lang === 'en' ? 'Collaboration with ' : 'بالتعاون مع '}
+                    <strong style={{ color: 'var(--gold)' }}>{user.id === app.userId ? app.clientName : app.applicantName}</strong>
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {app?.status !== 'disputed' && (
+                    <button className="btn-secondary" style={{ borderColor: '#e74c3c', color: '#e74c3c' }} onClick={handleOpenDispute}>
+                      <i className="fas fa-exclamation-triangle"></i> {lang === 'en' ? 'Dispute' : 'فتح نزاع'}
+                    </button>
+                  )}
+                  <button className="btn-secondary" onClick={() => setPage('applications')}>
+                    <i className="fas fa-arrow-left"></i> {lang === 'en' ? 'Back' : 'رجوع'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+              <div>
+                {/* File Sharing Card */}
+                <div className="job-card" style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800 }}>
+                      <i className="fas fa-folder-open" style={{ color: 'var(--gold)', marginRight: '10px' }}></i>
+                      {lang === 'en' ? 'Shared Files' : 'الملفات المشتركة'}
+                    </h3>
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+                    <button className="btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={handleUploadFile} disabled={uploading}>
+                      {uploading ? <span className="spinner" style={{ width: '12px', height: '12px' }}></span> : <><i className="fas fa-plus"></i> {lang === 'en' ? 'Upload' : 'رفع ملف'}</>}
+                    </button>
+                  </div>
+                  
+                  <div className="file-list">
+                    {files.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                        <i className="fas fa-cloud-upload-alt" style={{ fontSize: '32px', marginBottom: '10px', display: 'block' }}></i>
+                        {lang === 'en' ? 'No files shared yet' : 'لا توجد ملفات مشتركة بعد'}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: '10px' }}>
+                        {files.map(f => (
+                          <div key={f.id} className="file-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <i className="fas fa-file-pdf" style={{ fontSize: '20px', color: '#e74c3c' }}></i>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '14px' }}>{f.name}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.senderName} • {new Date(f.timestamp).toLocaleString()}</div>
+                              </div>
+                            </div>
+                            <a href={f.url} target="_blank" className="nav-icon-btn"><i className="fas fa-download"></i></a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Milestones Card */}
+                <div className="job-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800 }}>
+                      <i className="fas fa-tasks" style={{ color: 'var(--gold)', marginRight: '10px' }}></i>
+                      {lang === 'en' ? 'Milestones & Delivery' : 'المراحل والتسليم'}
+                    </h3>
+                    {user.id === app.clientId && (
+                      <button className="btn-secondary" style={{ fontSize: '11px', padding: '6px 12px' }} onClick={handleAddMilestone}>
+                        <i className="fas fa-plus"></i> {lang === 'en' ? 'Add Milestone' : 'إضافة مرحلة'}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="milestones-list">
+                    {milestones.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                        {lang === 'en' ? 'No milestones defined yet' : 'لا توجد مراحل محددة بعد'}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: '12px' }}>
+                        {milestones.map(m => {
+                          const isDone = m.status === 'completed';
+                          return (
+                            <div key={m.id} className="milestone-item" style={{ 
+                              padding: '16px', 
+                              background: isDone ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)', 
+                              borderRadius: '12px', 
+                              border: isDone ? '1px solid rgba(16,185,129,0.2)' : '1px solid var(--border)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <div>
+                                <div style={{ fontWeight: 800, fontSize: '15px', color: isDone ? '#10b981' : 'var(--text-main)' }}>{m.title}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{new Date(m.timestamp).toLocaleDateString()}</div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{ color: isDone ? '#10b981' : 'var(--gold)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
+                                  {isDone ? (lang === 'en' ? 'COMPLETED' : 'مكتمل') : (lang === 'en' ? 'PENDING' : 'قيد الانتظار')}
+                                </span>
+                                {user.id === app.clientId && (
+                                  <button 
+                                    className={`nav-icon-btn ${isDone ? 'active' : ''}`} 
+                                    onClick={() => handleToggleMilestone(m.id, m.status)}
+                                    style={{ color: isDone ? '#10b981' : 'var(--text-muted)' }}
+                                  >
+                                    <i className={`fas fa-${isDone ? 'check-circle' : 'circle'}`}></i>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                {/* Quick Info Sidebar */}
+                <div className="job-card" style={{ position: 'sticky', top: '100px' }}>
+                  <h4 style={{ marginBottom: '16px' }}>{lang === 'en' ? 'Project Summary' : 'ملخص المشروع'}</h4>
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    <div style={{ fontSize: '13px' }}>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>{lang === 'en' ? 'Budget' : 'الميزانية'}</div>
+                      <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--gold)' }}>{app?.bidAmount || job?.budget} EGP</div>
+                    </div>
+                    <div style={{ fontSize: '13px' }}>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>{lang === 'en' ? 'Deadline' : 'الموعد النهائي'}</div>
+                      <div style={{ fontWeight: 800 }}>{app?.deliveryTime || '14 Days'}</div>
+                    </div>
+                    <div className="divider"></div>
+                    <button className="btn-primary" style={{ width: '100%' }} onClick={() => setPage('messages', { targetId: user.id === app.userId ? app.clientId : app.userId })}>
+                      <i className="fas fa-comment-dots"></i> {lang === 'en' ? 'Message Support' : 'تواصل مع الدعم'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function HomePage({ lang, setPage, user, formatPrice }) {
 
       return (
         <>
           <HeroSection lang={lang} setPage={setPage} />
           <TrustBar lang={lang} />
           <ServicesGrid lang={lang} setPage={setPage} />
-          <FeaturedJobs lang={lang} setPage={setPage} user={user} />
+          <FeaturedJobs lang={lang} setPage={setPage} user={user} formatPrice={formatPrice} />
           <HowItWorks lang={lang} />
           <TestimonialsSection lang={lang} />
           <CTASection lang={lang} setPage={setPage} />
@@ -5407,7 +6687,18 @@
       const [pageParams, setPageParams] = useState(null);
       const [lang, setLang] = useState(() => localStorage.getItem('nl_lang') || 'en');
       const [theme, setTheme] = useState(() => localStorage.getItem('nl_theme') || 'dark');
+      const [currency, setCurrency] = useState(() => localStorage.getItem('nl_currency') || 'EGP');
       const [user, setUser] = useState(() => window.UserDB ? window.UserDB.getSession() : null);
+
+      const formatPrice = (amountEGP) => {
+        if (!amountEGP) return '0';
+        if (currency === 'USD') {
+          return '$' + (amountEGP / 50).toFixed(2);
+        }
+        return amountEGP.toLocaleString() + ' EGP';
+      };
+
+      useEffect(() => { localStorage.setItem('nl_currency', currency); }, [currency]);
 
       const [unreadMsgCount, setUnreadMsgCount] = useState(0);
       const [unreadNoteCount, setUnreadNoteCount] = useState(0);
@@ -5449,12 +6740,12 @@
         document.documentElement.setAttribute('data-theme', theme);
       }, [theme]);
 
-      const shared = { lang, setPage: navigate, theme, setTheme, user, setUser };
+      const shared = { lang, setPage: navigate, theme, setTheme, user, setUser, currency, setCurrency, formatPrice };
 
       const renderPage = () => {
         switch (page) {
           case 'home': return <HomePage {...shared} />;
-          case 'jobs': return <JobsPage {...shared} />;
+          case 'jobs': return <JobsPage {...shared} params={pageParams} />;
           case 'login': return <LoginPage {...shared} />;
           case 'signup': return <SignupPage {...shared} />;
           case 'forgot-password': return <ForgotPasswordPage {...shared} />;
@@ -5466,16 +6757,21 @@
           case 'settings': return <SettingsPage {...shared} setLang={setLang} />;
           case 'saved-jobs': return <SavedJobsPage {...shared} />;
           case 'applications': return <ApplicationsPage {...shared} />;
+          case 'dashboard': return <DashboardPage {...shared} />;
+          case 'membership': return <MembershipPage {...shared} />;
+          case 'legal': return <LegalPage {...shared} type={pageParams?.type} />;
+          case 'blog': return <BlogPage {...shared} postId={pageParams?.id} />;
           case 'admin': return <AdminPage {...shared} />;
           case 'messages': return <MessagesPage {...shared} targetId={pageParams?.targetId} />;
           case 'notifications': return <NotificationsPage {...shared} />;
+          case 'workroom': return <WorkroomPage {...shared} appId={pageParams?.appId} />;
           default: return <HomePage {...shared} />;
         }
       };
 
       return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Header page={page} setPage={navigate} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} user={user} setUser={setUser} unreadMessages={unreadMsgCount} unreadNotifications={unreadNoteCount} />
+          <Header page={page} setPage={navigate} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} user={user} setUser={setUser} currency={currency} setCurrency={setCurrency} unreadMessages={unreadMsgCount} unreadNotifications={unreadNoteCount} />
           <main style={{ flex: 1 }}>{renderPage()}</main>
           <Footer lang={lang} setPage={navigate} />
           <Chatbot lang={lang} />

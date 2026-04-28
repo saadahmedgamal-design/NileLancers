@@ -86,6 +86,39 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
+// Email Notifications Endpoint
+const nodemailer = require('nodemailer');
+app.post('/api/send-email', async (req, res) => {
+  const { to, subject, text } = req.body;
+  
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('⚠️ Email credentials not set. Skipping email send.');
+    return res.status(200).json({ success: true, message: 'Email skipped (no credentials)' });
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  try {
+    await transporter.sendMail({
+      from: `"NileLancers" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text
+    });
+    console.log(`📧 Email sent to ${to}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('📧 Email error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);

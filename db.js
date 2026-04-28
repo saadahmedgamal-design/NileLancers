@@ -25,6 +25,7 @@ if (!firebase.apps.length) {
 
 const _auth = firebase.auth();
 const _db   = firebase.firestore();
+const _storage = firebase.storage();
 
 /* Session key (localStorage cache — for instant getSession()) */
 var SESSION_KEY = 'nl_user';
@@ -42,6 +43,22 @@ function _clearSession() {
    UserDB — Public Auth API
    ============================================================= */
 window.UserDB = {
+
+  /* ----------------------------------------------------------
+     uploadFile(file, path, onProgress)
+     Returns Promise<string> (downloadUrl)
+     ---------------------------------------------------------- */
+  uploadFile: function (file, path, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var ref = _storage.ref(path + '/' + Date.now() + '_' + file.name);
+      var task = ref.put(file);
+      task.on('state_changed', 
+        function (snap) { if (onProgress) onProgress((snap.bytesTransferred / snap.totalBytes) * 100); },
+        function (err) { reject(err); },
+        function () { task.snapshot.ref.getDownloadURL().then(resolve).catch(reject); }
+      );
+    });
+  },
 
   /* ----------------------------------------------------------
      login({ email, password })
@@ -126,6 +143,7 @@ window.UserDB = {
           userData.companyName = companyName;
           userData.totalSpent = 0;
           userData.projectsPosted = 0;
+          userData.membership = 'free';
         } else {
           userData.hourlyRate = hourlyRate;
           userData.portfolioUrl = portfolioUrl;
@@ -133,6 +151,8 @@ window.UserDB = {
           userData.totalEarnings = 0;
           userData.completedJobs = 0;
           userData.ratingAvg = 0;
+          userData.membership = 'free';
+          userData.bidsRemaining = 5; // Default for free plan
         }
         return _db.collection('users').doc(cred.user.uid).set(userData)
           .then(function () { return userData; });
@@ -331,10 +351,28 @@ window.UserDB = {
      ---------------------------------------------------------- */
   applyToJob: function (jobId, userId) {
     var docId = jobId + '_' + userId;
-    return _db.collection('applications').doc(docId).set({
-      jobId: jobId, userId: userId, appliedAt: new Date().toISOString(), status: 'pending'
-    }).then(function () {
-      return { ok: true };
+    var userRef = _db.collection('users').doc(userId);
+    
+    return _db.collection('applications').doc(docId).get().then(function(doc) {
+      if (doc.exists) return { ok: true }; // Already applied
+      
+      return userRef.get().then(function(userDoc) {
+        var userData = userDoc.data();
+        if (userData.membership === 'free' && (userData.bidsRemaining || 0) <= 0) {
+          return Promise.reject({ message: 'No bids remaining. Upgrade your plan!' });
+        }
+        
+        var batch = _db.batch();
+        batch.set(_db.collection('applications').doc(docId), {
+          jobId: jobId, userId: userId, appliedAt: new Date().toISOString(), status: 'pending'
+        });
+        
+        if (userData.membership !== 'unlimited') {
+          batch.update(userRef, { bidsRemaining: firebase.firestore.FieldValue.increment(-1) });
+        }
+        
+        return batch.commit().then(function() { return { ok: true }; });
+      });
     }).catch(function (err) {
       console.warn('[UserDB.applyToJob]', err.message);
       return { ok: false, error: err.message };
@@ -598,11 +636,30 @@ window.UserDB = {
       };
       const res = await _db.collection('messages').add(msg);
       
+      // Stop typing on send
+      await this.setTypingStatus(senderId, receiverId, false);
+      
       // Add notification for receiver
       await this.addNotification(receiverId, 'message', 'You have a new message', 'messages');
 
       return { ok: true, id: res.id };
     } catch (e) { return { ok: false, error: e.message }; }
+  },
+
+  setTypingStatus: function(userId, targetId, isTyping) {
+    const convoId = [userId, targetId].sort().join('_');
+    return _db.collection('typing_status').doc(convoId + '_' + userId).set({
+      userId, targetId, isTyping, lastUpdate: new Date().toISOString()
+    });
+  },
+
+  subscribeToTypingStatus: function(targetId, userId, callback) {
+    const convoId = [userId, targetId].sort().join('_');
+    return _db.collection('typing_status').doc(convoId + '_' + targetId)
+      .onSnapshot(doc => {
+        if (doc.exists) callback(doc.data().isTyping);
+        else callback(false);
+      });
   },
 
   subscribeToMessages: function (userId, callback) {
@@ -627,15 +684,32 @@ window.UserDB = {
     return _db.collection('messages').doc(msgId).update({ isRead: true });
   },
 
-  addNotification: function (userId, type, message, link) {
+  addNotification: function (userId, type, message, page, appId) {
     var note = {
       userId:    userId,
       type:      type || 'info', // info, success, warning, message
       message:   message,
-      link:      link || '',
+      page:      page || '',
+      appId:     appId || '',
       isRead:    false,
       timestamp: new Date().toISOString()
     };
+    
+    // Trigger Email Notification (Best effort)
+    _db.collection('users').doc(userId).get().then(function(doc) {
+      if (doc.exists && doc.data().email) {
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: doc.data().email,
+            subject: 'New Notification from NileLancers',
+            text: message + '\n\nCheck it out here: ' + window.location.origin
+          })
+        }).catch(function(e) { console.warn('Email notify failed:', e); });
+      }
+    });
+
     return _db.collection('notifications').add(note);
   },
 
@@ -648,6 +722,64 @@ window.UserDB = {
         notes.sort(function (a, b) { return (b.timestamp > a.timestamp) ? 1 : -1; });
         callback(notes);
       });
+  },
+
+  /* ----------------------------------------------------------
+     REVIEWS
+     ---------------------------------------------------------- */
+  addReview: function (freelancerId, clientId, rating, comment, jobId) {
+    var review = {
+      freelancerId: freelancerId,
+      clientId:     clientId,
+      rating:       Number(rating),
+      comment:      comment,
+      jobId:        jobId,
+      timestamp:    new Date().toISOString()
+    };
+    return _db.collection('reviews').add(review);
+  },
+
+  subscribeToReviews: function (userId, callback) {
+    return _db.collection('reviews')
+      .where('freelancerId', '==', userId)
+      .onSnapshot(function (snap) {
+        var reviews = [];
+        snap.forEach(function (doc) { reviews.push(Object.assign({ id: doc.id }, doc.data())); });
+        reviews.sort(function (a, b) { return (b.timestamp > a.timestamp) ? 1 : -1; });
+        callback(reviews);
+      });
+  },
+
+  /* ----------------------------------------------------------
+     VERIFICATION
+     ---------------------------------------------------------- */
+  submitVerification: function (userId, idPhotoUrl) {
+    return _db.collection('verifications').doc(userId).set({
+      userId:    userId,
+      idPhoto:   idPhotoUrl,
+      status:    'pending',
+      timestamp: new Date().toISOString()
+    });
+  },
+
+  getVerificationStatus: function (userId, callback) {
+    return _db.collection('verifications').doc(userId).onSnapshot(function (doc) {
+      callback(doc.exists ? doc.data() : null);
+    });
+  },
+
+  listPendingVerifications: function () {
+    return _db.collection('verifications').where('status', '==', 'pending').get().then(function (snap) {
+      var list = [];
+      snap.forEach(function (doc) { list.push(doc.data()); });
+      return { ok: true, list: list };
+    });
+  },
+
+  approveVerification: function (userId) {
+    return _db.collection('verifications').doc(userId).update({ status: 'approved' }).then(function () {
+      return _db.collection('users').doc(userId).update({ isVerified: true });
+    });
   },
 
   markNotificationRead: function (noteId) {
