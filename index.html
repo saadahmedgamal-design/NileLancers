@@ -161,7 +161,7 @@
           <nav className="nav" dir={dir}>
             <div className="nav-logo" onClick={() => nav('home')}>
               <i className="fas fa-water nav-logo-img"></i>
-              <span className="nav-logo-text"><span className="logo-nile">Nile</span><span className="logo-lancers">Lancers</span></span>
+              <span className="nav-logo-text">NileLancers</span>
             </div>
             <div className="nav-search-wrap" style={{ flex: 1, maxWidth: '400px', margin: '0 20px', position: 'relative' }}>
                <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '14px' }}></i>
@@ -310,7 +310,7 @@
               <div className="footer-brand">
                 <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => setPage('home')}>
                   <i className="fas fa-water nav-logo-img"></i>
-                  <span className="nav-logo-text"><span className="logo-nile">Nile</span><span className="logo-lancers">Lancers</span></span>
+                  <span className="nav-logo-text">NileLancers</span>
                 </div>
                 <p>{t.desc}</p>
                 <div className="footer-socials">
@@ -794,10 +794,7 @@
       return (
         <div className="auth-page" dir={dir}>
           <div className="auth-card">
-            <div className="auth-logo">
-              <i className="fas fa-water" style={{ fontSize: '28px', color: 'var(--gold)', filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.8))', marginRight: '10px' }}></i>
-              <h1><span style={{ color: '#7FDBFF', WebkitTextFillColor: '#7FDBFF' }}>Nile</span><span style={{ color: 'var(--gold)', WebkitTextFillColor: 'var(--gold)' }}>Lancers</span></h1>
-            </div>
+            <div className="auth-logo"><h1>NileLancers</h1></div>
             <div className="auth-header">
               <h2>{t.login_title}</h2>
               <p>{t.login_sub}</p>
