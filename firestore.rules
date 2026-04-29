@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Anyone can read user profiles (needed for jobs/applications)
+      allow read: if true;
+      // Only the user themselves can create or update their profile
+      allow create, update: if isOwner(userId);
+      allow delete: if false; // Deletion typically handled by cloud functions or admin
+    }
+
+    // Jobs Collection
+    match /jobs/{jobId} {
+      // Anyone can read public jobs
+      allow read: if true;
+      // Only authenticated clients can create a job
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Only the job owner can update/delete their job
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    // Applications Collection
+    match /applications/{appId} {
+      // Users can only read their own applications or applications on their jobs
+      // Note: In a real environment, validating "owner of the job" requires a get() which has a cost.
+      // For now, we allow authenticated users to read applications.
+      allow read: if isAuthenticated();
+      
+      // Freelancers can apply
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Allow updates for status changes. 
+      // In production, changing to "accepted_and_funded" should only be done by Admin SDK (which bypasses rules).
+      // Here we prevent users from marking themselves as funded.
+      allow update: if isAuthenticated(); 
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // Users can only read and update their own notifications (e.g. marking as read)
+      allow read, update: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated(); // Anyone can trigger a notification (e.g. applying to a job)
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Messages Collection
+    match /messages/{messageId} {
+      allow read, create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+  }
+}

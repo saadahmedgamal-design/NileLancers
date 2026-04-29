@@ -517,6 +517,38 @@ window.UserDB = {
   },
 
   /* ----------------------------------------------------------
+     addReview(freelancerId, clientId, rating, comment, jobId)
+     Adds a review and updates the freelancer's average rating
+     ---------------------------------------------------------- */
+  addReview: function(freelancerId, clientId, rating, comment, jobId) {
+    return _db.collection('reviews').add({
+      freelancerId: freelancerId,
+      clientId: clientId,
+      rating: Number(rating),
+      comment: comment,
+      jobId: jobId,
+      createdAt: new Date().toISOString()
+    }).then(function() {
+      // Recalculate average rating
+      return _db.collection('reviews').where('freelancerId', '==', freelancerId).get();
+    }).then(function(snap) {
+      if (snap.empty) return;
+      var total = 0;
+      snap.docs.forEach(function(d) { total += d.data().rating || 0; });
+      var avg = total / snap.size;
+      return _db.collection('users').doc(freelancerId).update({
+        rating: avg,
+        reviewCount: snap.size
+      });
+    }).then(function() {
+      return { ok: true };
+    }).catch(function(err) {
+      console.warn('[UserDB.addReview]', err.message);
+      return { ok: false, error: err.message };
+    });
+  },
+
+  /* ----------------------------------------------------------
      listMyPostedJobs(userId) — jobs posted by a client
      Returns Promise<Array>  (sorted newest-first on client to avoid
      requiring a Firestore composite index on postedBy + createdAt)

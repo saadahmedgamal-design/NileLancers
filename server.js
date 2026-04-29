@@ -1,7 +1,29 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_mock_key_for_demonstration');
-require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    // Fix for private key newlines in environment variables
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('✅ Firebase Admin initialized successfully.');
+  } catch (error) {
+    console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT:', error.message);
+  }
+} else {
+  console.log('⚠️ FIREBASE_SERVICE_ACCOUNT not set. Webhook updates will be skipped.');
+}
+
+const db = admin.apps.length ? admin.firestore() : null;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +34,7 @@ app.use(cors());
 // Serve static files (Frontend)
 app.use(express.static('./'));
 
-// Webhook endpoint needs raw body
+// Webhook endpoint for Stripe
 app.post('/webhook', express.raw({ type: 'application/json' }), (request, response) => {
   const sig = request.headers['stripe-signature'];
   let event;
@@ -33,8 +55,28 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (request, respon
     const jobId = session.metadata.jobId;
     const freelancerId = session.metadata.freelancerId;
     
-    // Here you would use Firebase Admin SDK to securely update the application status to "accepted_and_funded"
-    console.log(`[Webhook] Update Application ${appId} for Job ${jobId} to accepted_and_funded.`);
+    // Securely update the application status to "accepted_and_funded"
+    if (db) {
+      db.collection('applications').doc(appId).update({
+        status: 'accepted_and_funded',
+        paymentIntentId: session.payment_intent,
+        fundedAt: new Date().toISOString()
+      }).then(() => {
+        console.log(`✅ [Webhook] Application ${appId} status updated to accepted_and_funded.`);
+        
+        // Also notify the freelancer
+        db.collection('notifications').add({
+          userId: freelancerId,
+          type: 'success',
+          message: `Your application for Job ${jobId} has been funded!`,
+          page: 'applications',
+          isRead: false,
+          timestamp: new Date().toISOString()
+        });
+      }).catch(err => {
+        console.error(`❌ [Webhook] Error updating Firestore:`, err.message);
+      });
+    }
   }
 
   response.send();
@@ -43,46 +85,56 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (request, respon
 // JSON middleware for other endpoints
 app.use(express.json());
 
-// Create Checkout Session
+// Create Checkout Session (Mock Mode)
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { application, jobTitle, budget } = req.body;
-
-    // Convert EGP to cents/piasters (multiply by 100)
-    // Stripe requires amount in the smallest currency unit
-    const unitAmount = Math.round(parseFloat(budget) * 100);
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'egp',
-            product_data: {
-              name: `Job: ${jobTitle}`,
-              description: `Payment to accept application from ${application.applicantName || 'Freelancer'}`,
-            },
-            unit_amount: unitAmount,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      // We pass the application ID via URL query params to the success page so the frontend can update it
-      // In a production app, the backend webhook should do this securely
-      success_url: `${req.headers.origin}/success.html?session_id={CHECKOUT_SESSION_ID}&app_id=${application.id}`,
-      cancel_url: `${req.headers.origin}/cancel.html`,
-      metadata: {
-        applicationId: application.id,
-        jobId: application.jobId,
-        freelancerId: application.userId
-      }
-    });
-
-    res.json({ id: session.id, url: session.url });
+    
+    // In mock mode, we just redirect to a local simulation page
+    // We pass the data in the URL for the mock page to display
+    const mockUrl = `/mock-payment.html?app_id=${application.id}&job_id=${application.jobId}&job_title=${encodeURIComponent(jobTitle)}&budget=${budget}&freelancer_id=${application.userId}`;
+    
+    res.json({ id: 'mock_session_' + Date.now(), url: mockUrl });
   } catch (error) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Mock Payment Confirmation (Simulates Webhook)
+app.post('/api/confirm-payment', async (req, res) => {
+  const { appId, jobId, freelancerId } = req.body;
+  
+  console.log(`🛠️ [Mock Payment] Confirming payment for App ID: ${appId}`);
+  
+  if (db) {
+    try {
+      // 1. Update Application status
+      await db.collection('applications').doc(appId).update({
+        status: 'accepted_and_funded',
+        paymentType: 'mock_stripe',
+        fundedAt: new Date().toISOString()
+      });
+
+      // 2. Notify Freelancer
+      await db.collection('notifications').add({
+        userId: freelancerId,
+        type: 'success',
+        message: `Your application for Job ${jobId} has been funded!`,
+        page: 'applications',
+        isRead: false,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log(`✅ [Mock Payment] Firestore updated and notification sent.`);
+      res.json({ success: true });
+    } catch (err) {
+      console.error(`❌ [Mock Payment] Error updating Firestore:`, err.message);
+      res.status(500).json({ error: err.message });
+    }
+  } else {
+    console.log(`[Mock Payment] (Skipped - No DB) Update Application ${appId}`);
+    res.json({ success: true, warning: 'No database connection' });
   }
 });
 
@@ -122,7 +174,9 @@ app.post('/api/send-email', async (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
-    console.log(`💡 Make sure to set STRIPE_SECRET_KEY in your .env file.`);
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('mock')) {
+      console.log(`💡 Reminder: Set your real STRIPE_SECRET_KEY in the .env file to enable payments.`);
+    }
   });
 }
 
